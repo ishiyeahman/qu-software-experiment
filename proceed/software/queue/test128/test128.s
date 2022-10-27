@@ -1,3 +1,7 @@
+.section .data
+	.equ	IN_COUNT, 128
+	.equ	OUT_COUNT, 129
+
 .section .text
 
 ** 0x1000からデータを適当に入力する
@@ -14,25 +18,35 @@ finish:
 
 
 /* =============================== */
-test_in_set:
-	move.l	#128, %d3
+in_set:
+	move.l	IN_COUNT, %d3
 
-loop_in_test:
+in_loop:
 	**jsr	INQ
-	move.l	%D0, (%A1)+
+	; move.l	%D0, (%A1)+
 	subq.l	#1, %d3
-	bne	loop_in_test
-	bra	loop_out_set
+	bne	in_loop
+	bra	out_set
 
 /* ================================ */
 	
 
-loop_out_set:
-	move.l	#129, %d3
+out_set:
+	move.l	OUT_COUNT, %d3
 
-loop_out_test:
+out_loop:
 	** jsr OUTQ
-	move.l %D0	
+	/* データと戻り値をメモリに格納しておく*/
+	move.b	%D1, (%A2)+
+	move.l	%D0, (%A3)+
+	subq.l	#1, %d3
+	bne out_loop
+	bra finish
+
+	; move.l %D0	
+
+
+/* 上記のプログラムで*/
 
 
 /* 以下に　INQ と OUTQ を貼り付ける*/
