@@ -1,0 +1,40 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ram              0x0000000000000000 0x0000000000040000 xrw
+rom0             0x0000000000c00000 0x0000000000080000
+device           0x0000000000fff000 0x0000000000001000
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD step4v2.o
+                [!provide]                        PROVIDE (__stack = 0x3fff0)
+
+.text           0x0000000000000400      0x118
+ *(.text)
+ .text          0x0000000000000400      0x118 step4v2.o
+
+.data           0x0000000000000518      0x3f4
+                0x0000000000000518                . = ALIGN (0x4)
+ *(.data)
+ .data          0x0000000000000518      0x3f4 step4v2.o
+
+.bss            0x000000000000090c     0x4000
+                0x000000000000090c                . = ALIGN (0x4)
+ *(.bss)
+ .bss           0x000000000000090c     0x4000 step4v2.o
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+Address of section .text set to 0x400
+OUTPUT(step4v2.abs.tmp19587 srec)
+
+Cross Reference Table
+
+Symbol                                            File
+No symbols

@@ -1,0 +1,40 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ram              0x0000000000000000 0x0000000000040000 xrw
+rom0             0x0000000000c00000 0x0000000000080000
+device           0x0000000000fff000 0x0000000000001000
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD step5test.o
+                [!provide]                        PROVIDE (__stack = 0x3fff0)
+
+.text           0x0000000000000400      0x1a8
+ *(.text)
+ .text          0x0000000000000400      0x1a8 step5test.o
+
+.data           0x00000000000005a8      0x43c
+                0x00000000000005a8                . = ALIGN (0x4)
+ *(.data)
+ .data          0x00000000000005a8      0x43c step5test.o
+
+.bss            0x00000000000009e4     0x4000
+                0x00000000000009e4                . = ALIGN (0x4)
+ *(.bss)
+ .bss           0x00000000000009e4     0x4000 step5test.o
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+Address of section .text set to 0x400
+OUTPUT(step5test.abs.tmp12855 srec)
+
+Cross Reference Table
+
+Symbol                                            File
+No symbols

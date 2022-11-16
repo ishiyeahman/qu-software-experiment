@@ -1,0 +1,40 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ram              0x0000000000000000 0x0000000000040000 xrw
+rom0             0x0000000000c00000 0x0000000000080000
+device           0x0000000000fff000 0x0000000000001000
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD past5.o
+                [!provide]                        PROVIDE (__stack = 0x3fff0)
+
+.text           0x0000000000000400      0x1ae
+ *(.text)
+ .text          0x0000000000000400      0x1ae past5.o
+
+.data           0x00000000000005b0      0x43c
+                0x00000000000005b0                . = ALIGN (0x4)
+ *(.data)
+ .data          0x00000000000005b0      0x43c past5.o
+
+.bss            0x00000000000009ec     0x4000
+                0x00000000000009ec                . = ALIGN (0x4)
+ *(.bss)
+ .bss           0x00000000000009ec     0x4000 past5.o
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+Address of section .text set to 0x400
+OUTPUT(past5.abs.tmp25723 srec)
+
+Cross Reference Table
+
+Symbol                                            File
+No symbols
