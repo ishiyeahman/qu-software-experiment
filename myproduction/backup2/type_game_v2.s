@@ -343,6 +343,7 @@ TYPE_GAME_PRINT_NEW_LINE:
 
 TYPE_GAME_SETTING:
 	move.l #0, (COUNT_SIZE)
+	move.l #0, (COUNT_FAULT)
     	bra LOOP
 
 
@@ -522,8 +523,8 @@ TYPE_GAME_CHAR_CHECK:
 
     	/* 入力が終了していないか確認*/
 	cmp.l   #SIZE_hello, %d5
-  	beq INTERGET_END
-	
+  	*beq INTERGET_END
+	beq END
 
     	/* 参照すべき文字列を用意する*/
 
@@ -536,7 +537,7 @@ TYPE_GAME_CHAR_CHECK:
     	  
 	/* 一致しなければ終了する*/
    	cmp.b  %d6, %d1
-   	bne LED_BAD
+   	bne FAULT
 	
     	/* 文字を出力しカウントをインクリメントする */
 	
@@ -544,8 +545,9 @@ TYPE_GAME_CHAR_CHECK:
    	addi.l #1, %d5
    	move.l %d5, (COUNT_SIZE)
 	
+	
 	/* 入力成功表示*/
-	bra LED_GOOD
+	bra SUCCESS
 
 
 ****************
@@ -574,9 +576,18 @@ LED_LOOP_END:
 
 
 LED_UPDATE:
+
+	cmpi.l #0x01, %d4
+	beq LED_UPDATE_FAULT_NUMBER
 	move.b %d6, LED0
 	move.b %d7, LED1
-	bra INTERGET_END
+	bra LED_GOOD
+
+LED_UPDATE_FAULT_NUMBER:
+	move.b %d6, LED2
+	move.b %d7, LED3
+	bra LED_BAD
+
 
 LED_BAD:
 	move.b #'B', LED7
@@ -590,9 +601,38 @@ LED_GOOD:
 	move.b #'O', LED6
 	move.b #'O', LED5
 	move.b #'D', LED4
+	bra INTERGET_END
+
+
+LED_END:
+	move.b #'E', LED7
+	move.b #'N', LED6
+	move.b #'D', LED5
+	move.b #'!', LED4
+	bra INTERGET_END
+
+
+****************
+** typing data
+****************
+FAULT:
+	lea.l COUNT_FAULT, %a1
+	move.l (%a1), %d5
+
+	addi.l #1, %d5
+   	move.l %d5, (COUNT_FAULT)
+
+
+	/* 失敗回数を記録する*/
+	move.l #0x01 , %d4
 	bra LED_SET
-	
-		
+
+SUCCESS:	
+	move.l #0x00 , %d4
+	bra LED_SET
+
+END:
+	bra LED_END	
 /* TYPE GAME VERSION ========================================== */   
 
 INTERGET_END:
@@ -911,7 +951,8 @@ TXT_hello:
 *** 初期化のないデータ領域
 ******************************************************
 .section .bss
-
+COUNT_FAULT:
+	.ds.l 0x01
 COUNT_SIZE:
     .ds.l 0x01
 TXT_P:

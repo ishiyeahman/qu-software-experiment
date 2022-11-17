@@ -101,20 +101,13 @@ boot:
 		move.l #timer1_interrupt, 0x118 /* タイマ割り込みベクタの登録 */
 		
 
-		
+		/* task_p にタイマー割り込みで実行するルーチンのアドレスを入れておく */
+		*lea.l TT,  %a0
+		*move.l	%a0, task_p
+		*move.l #TT, task_p
 
-        	/* Queue initialize */
+        /* Queue initialize */
         jsr Init_Q
-
-		*LED_CLEAR:
-		move.b #' ', LED0
-		move.b #' ', LED1
-		move.b #' ', LED2
-		move.b #' ', LED3
-		move.b #' ', LED4
-		move.b #' ', LED5
-		move.b #' ', LED6
-		move.b #' ', LED7
 
 
 		/*step9のMAINへ*/
@@ -532,67 +525,18 @@ TYPE_GAME_CHAR_CHECK:
 	adda.l %d5, %a1
 		
 	move.b (%a1), %d6
-	 
+	move.b #'9', LED0 
     	  
 	/* 一致しなければ終了する*/
    	cmp.b  %d6, %d1
-   	bne LED_BAD
+   	bne INTERGET_END
 	
     	/* 文字を出力しカウントをインクリメントする */
 	
    	jsr INQ
    	addi.l #1, %d5
    	move.l %d5, (COUNT_SIZE)
-	
-	/* 入力成功表示*/
-	bra LED_GOOD
-
-
-****************
-** LED
-****************
-	
-LED_SET:
-	move.b #'0', %d6
-	move.b #'0', %d7
-
-LED_LOOP:
-	
-	addi.b #0x01, %d6
-	cmpi.b #':', %d6
-	beq LED_CARRY
-	bra LED_LOOP_END
-	
-LED_CARRY:
-	move.b #'0', %d6
-	addi.b #0x01, %d7
-
-LED_LOOP_END:
-	subq.l #1, %d5
-	beq LED_UPDATE
-	bra LED_LOOP
-
-
-LED_UPDATE:
-	move.b %d6, LED0
-	move.b %d7, LED1
-	bra INTERGET_END
-
-LED_BAD:
-	move.b #'B', LED7
-	move.b #'A', LED6
-	move.b #'D', LED5
-	move.b #' ', LED4
-	bra INTERGET_END
-	
-LED_GOOD:
-	move.b #'G', LED7
-	move.b #'O', LED6
-	move.b #'O', LED5
-	move.b #'D', LED4
-	bra LED_SET
-	
-		
+    
 /* TYPE GAME VERSION ========================================== */   
 
 INTERGET_END:

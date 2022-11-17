@@ -1,4 +1,4 @@
-/* 初期化*/
+** 初期化 *
 
 		***************************************************************
 		**各種レジスタ定義
@@ -7,7 +7,8 @@
 		***************
 		** レジスタ群の先頭
 		***************
-		.equ REGBASE,   0xFFF000          | DMAPを使用．
+
+		\.equ REGBASE,   0xFFF000          | DMAPを使用．
 		.equ IOBASE,    0x00d00000
 
 		***************
@@ -106,22 +107,23 @@ boot:
         	/* Queue initialize */
         jsr Init_Q
 
-		*LED_CLEAR:
-		move.b #' ', LED0
-		move.b #' ', LED1
-		move.b #' ', LED2
-		move.b #' ', LED3
-		move.b #' ', LED4
-		move.b #' ', LED5
-		move.b #' ', LED6
-		move.b #' ', LED7
+		jsr LED_CLEAR
 
 
 		/*step9のMAINへ*/
 		bra MAIN		
 
 
-
+LED_CLEAR:
+	move.b #' ', LED0
+	move.b #' ', LED1
+	move.b #' ', LED2
+	move.b #' ', LED3
+	move.b #' ', LED4
+	move.b #' ', LED5
+	move.b #' ', LED6
+	move.b #' ', LED7
+	rts
 /*trap #0での処理,SYSTEMCALL*/
 CALL_SYSTEM:
 	*move.w #0x2000, %SR /* こいつのせいで、タイマ割り込みエラー発生 */
@@ -138,6 +140,7 @@ CALL_SYSTEM:
 	bra CALL_END
 
 CALL_PUT:
+	
 	cmpi #2, %d0
 	bne CALL_RESET
 
@@ -151,6 +154,7 @@ CALL_PUT:
 
 
 CALL_RESET:
+	
 	cmpi #3, %d0
 	bne CALL_SET
 	
@@ -163,8 +167,9 @@ CALL_RESET:
 	bra CALL_END
 
 CALL_SET:
+	
 	cmpi #4, %d0
-	bne CALL_END
+	bne CALL_TYPE_GAME_SETTING
 
 	*lea.l SET_TIMER, %a0
 	*move.l (%a0), %d0
@@ -174,6 +179,25 @@ CALL_SET:
 	
 	bra CALL_END
 
+CALL_TYPE_GAME_SETTING:
+	move.b #'X', LED7
+	cmpi #5, %d0
+	bne CALL_TYPE_GAME_PRINT
+	
+	jsr TYPE_GAME_SETTING
+	jsr LED_CLEAR
+	
+	bra CALL_END
+
+CALL_TYPE_GAME_PRINT:
+	cmpi #6, %d0
+	bne CALL_END
+
+	jsr TYPE_GAME_PRINT_NEW_LINE
+	jsr TYPE_GAME_PRINT_TXT
+	jsr TYPE_GAME_PRINT_NEW_LINE
+
+	bra CALL_END
 
 CALL_END:
 	rte /* ☓ rte -> rts */
@@ -291,6 +315,8 @@ CALL_SET_TIMER:
 	.equ SYSCALL_NUM_PUTSTRING,	2
 	.equ SYSCALL_NUM_RESET_TIMER,	3
 	.equ SYSCALL_NUM_SET_TIMER,	4
+	.equ SYSCALL_TYPE_GAME_SET,	5
+	.equ SYSCALL_TYPE_GAME_PRINT,	6
 
 
 ******************************************************
@@ -303,8 +329,16 @@ MAIN:						/*走行モードとレベルの設定(ユーザモードへ移行)*/
 	move.w #0x0000, %SR				/*USER_MODE_LEBELを0に*/
 	lea.l USR_STK_TOP, %SP				/*USER_STACKを設定*/
 
+	
+	move.l #TXT_hello, %d1
+	move.l #SIZE_hello, %d2
 
-    
+    	jsr TYPE_GAME_SETTING
+	jsr TYPE_GAME_INTRO
+	jsr TYPE_GAME_PRINT_TXT
+	jsr TYPE_GAME_PRINT_NEW_LINE
+
+	bra LOOP
 	*move.l #SYSCALL_NUM_RESET_TIMER, %d0		/*システムコールでRESET_TIMERの起動*/
 	*trap #0
 
@@ -320,30 +354,75 @@ MAIN:						/*走行モードとレベルの設定(ユーザモードへ移行)*/
 ** Typing Game routine
 ** !! *********************************
 
+**********************
+** TYPE_GAME_SETTING
+** 引数 %d1.l %d2.l
+*********************
+TYPE_GAME_SETTING:
+	move.l #0, (COUNT_SIZE)
+	move.l #0, (COUNT_FAULT)
+	move.b #0, (END_FLG)
+	move.l %d1, TXT_P
+	move.l %d2, (TXT_SIZE)
+	
+    	rts
+
 TYPE_GAME_INTRO:
+	movem.l %d0-%d7,-(%SP)	
    	move.l #SYSCALL_NUM_PUTSTRING, %d0
 	move.l #0, %d1				/*ch=0*/
 	move.l #INTRO, %d2			/*p=#INTRO*/
 	move.l #28, %d3				/*size=8*/
 	trap #0
+	movem.l (%SP)+, %d0-%d7
+	rts
 
 TYPE_GAME_PRINT_TXT:
+	jsr CHANGE_CODE_I
+
+	movem.l %d0-%d7,-(%SP)	
     	move.l #SYSCALL_NUM_PUTSTRING, %d0
 	move.l #0, %d1				/*ch=0*/
-	move.l #TXT_hello, %d2			/*p=#INTRO*/
-	move.l #SIZE_hello, %d3				/*size=8*/
+	*move.l #TXT_hello, %d2			/*p=#INTRO*/
+	move.l (TXT_P), %d2
+	*move.l #SIZE_hello, %d3				/*size=8*/
+	move.l	(TXT_SIZE), %d3	
 	trap #0
+	movem.l (%SP)+, %d0-%d7
+
+	jsr CHANGE_CODE_DEF
+	rts
 
 TYPE_GAME_PRINT_NEW_LINE:
+	movem.l %d0-%d7,-(%SP)	
     	move.l #SYSCALL_NUM_PUTSTRING, %d0
 	move.l #0, %d1				/*ch=0*/
 	move.l #NEW_LINE, %d2			/*p=#INTRO*/
 	move.l #2, %d3				/*size=8*/
 	trap #0
+	movem.l (%SP)+, %d0-%d7
+	rts /* TYPE_GAME_LAST */
 
-TYPE_GAME_SETTING:
-	move.l #0, (COUNT_SIZE)
-    	bra LOOP
+CHANGE_CODE_DEF:
+	movem.l %d0-%d7,-(%SP)	
+   	move.l #SYSCALL_NUM_PUTSTRING, %d0
+	move.l #0, %d1				/*ch=0*/
+	move.l #CODE_DEF, %d2			/*p=#INTRO*/
+	move.l #5, %d3				/*size=8*/
+	trap #0
+	movem.l (%SP)+, %d0-%d7
+	rts
+	
+CHANGE_CODE_I:
+	movem.l %d0-%d7,-(%SP)	
+   	move.l #SYSCALL_NUM_PUTSTRING, %d0
+	move.l #0, %d1				/*ch=0*/
+	move.l #CODE_I, %d2			/*p=#INTRO*/
+	move.l #5, %d3				/*size=8*/
+	trap #0
+	movem.l (%SP)+, %d0-%d7
+	rts
+
 
 
 
@@ -366,7 +445,23 @@ LOOP:
 	move.l #SYSCALL_NUM_PUTSTRING, %d0	/*PUTSTRINGの呼び出し*/
 	move.l #0, %d1				/*ch=0*/
 	move.l #BUF, %d2			/*p=#BUF*/
+	*move.l #256, %d3				/*size=d0*/
 	trap #0
+	
+	cmp.b #0x01, (END_FLG)
+	bne LOOP
+
+TG_SET:	
+	
+		
+	move.l #SYSCALL_TYPE_GAME_SET, %d0	/*PUTSTRINGの呼び出し*/
+	move.l #TXT_univ, %d1
+	move.l #SIZE_univ, %d2				/*size=d0*/
+	trap #0
+
+	move.l #SYSCALL_TYPE_GAME_PRINT, %d0	/*PUTSTRINGの呼び出し*/
+	trap #0
+	
 
 	bra LOOP
 
@@ -513,39 +608,39 @@ INTERGET:
 	
 /* TYPE GAME VERSION ========================================== */    
 TYPE_GAME_CHAR_CHECK:
-    	
+
 	
 	lea.l COUNT_SIZE, %a1
 	move.l (%a1), %d5
- 	
 
+    /* 入力が終了していないか確認*/
+	*cmp.l   #SIZE_hello, %d5
+	cmp.l	(TXT_SIZE), %d5
+	*beq INTERGET_END
+	beq END
 
-    	/* 入力が終了していないか確認*/
-	cmp.l   #SIZE_hello, %d5
-  	beq INTERGET_END
-	
+    /* 参照すべき文字列を用意する*/
 
-    	/* 参照すべき文字列を用意する*/
-
-   	lea.l TXT_hello, %a1
+	move.l (TXT_P), %a1
 	
 	adda.l %d5, %a1
 		
 	move.b (%a1), %d6
-	 
-    	  
+	
+    
 	/* 一致しなければ終了する*/
-   	cmp.b  %d6, %d1
-   	bne LED_BAD
+	cmp.b  %d6, %d1
+	bne FAULT
 	
     	/* 文字を出力しカウントをインクリメントする */
 	
-   	jsr INQ
-   	addi.l #1, %d5
-   	move.l %d5, (COUNT_SIZE)
+	jsr INQ
+	addi.l #1, %d5
+	move.l %d5, (COUNT_SIZE)
+	
 	
 	/* 入力成功表示*/
-	bra LED_GOOD
+	bra SUCCESS
 
 
 ****************
@@ -574,9 +669,18 @@ LED_LOOP_END:
 
 
 LED_UPDATE:
+
+	cmpi.l #0x01, %d4
+	beq LED_UPDATE_FAULT_NUMBER
 	move.b %d6, LED0
 	move.b %d7, LED1
-	bra INTERGET_END
+	bra LED_GOOD
+
+LED_UPDATE_FAULT_NUMBER:
+	move.b %d6, LED2
+	move.b %d7, LED3
+	bra LED_BAD
+
 
 LED_BAD:
 	move.b #'B', LED7
@@ -590,10 +694,43 @@ LED_GOOD:
 	move.b #'O', LED6
 	move.b #'O', LED5
 	move.b #'D', LED4
+	bra INTERGET_END
+
+
+LED_END:
+	move.b #'E', LED7
+	move.b #'N', LED6
+	move.b #'D', LED5
+	move.b #'!', LED4
+
+	/* FLG UP */
+	move.b #0x01, (END_FLG)
+	bra INTERGET_END
+
+
+****************
+** typing data
+****************
+FAULT:
+	lea.l COUNT_FAULT, %a1
+	move.l (%a1), %d5
+
+	addi.l #1, %d5
+   	move.l %d5, (COUNT_FAULT)
+
+
+	/* 失敗回数を記録する*/
+	move.l #0x01 , %d4
 	bra LED_SET
-	
-		
+
+SUCCESS:	
+	move.l #0x00 , %d4
+	bra LED_SET
+
+END:
+	bra LED_END	
 /* TYPE GAME VERSION ========================================== */   
+
 
 INTERGET_END:
 	movem.l (%SP)+, %a0-%a6/%d0-%d7
@@ -706,8 +843,6 @@ GETSTRING_END:
 	movem.l (%SP)+, %a0-%a6/%d1-%d7
 
 	rts
-
-
 
 
 ************************************************************************************************************
@@ -905,20 +1040,37 @@ TXT_hello:
 
 .equ SIZE_hello, 11
 
+TXT_univ:
+    .ascii "Kyushu university, Ito campus"
 
+.equ SIZE_univ, 29
+
+***********
+** ANSI
+************
+CODE_DEF:
+	.ascii "\e[0m"
+CODE_I:
+	.ascii "\e[2m"
 
 ******************************************************
 *** 初期化のないデータ領域
 ******************************************************
 .section .bss
 
+/* type game ------------------------------ */
+COUNT_FAULT:
+	.ds.l 0x01
 COUNT_SIZE:
     .ds.l 0x01
 TXT_P:
 	.ds.l 0x01
 TXT_SIZE:
 	.ds.l 0x01
+END_FLG:
+	.ds.b 0x01
 
+/* ------------------------------------- */
 task_p:
 	.ds.l	0x01
 	.even

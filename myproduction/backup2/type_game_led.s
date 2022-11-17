@@ -104,7 +104,7 @@ boot:
 		
 
         	/* Queue initialize */
-        jsr Init_Q
+        	jsr Init_Q
 
 		*LED_CLEAR:
 		move.b #' ', LED0

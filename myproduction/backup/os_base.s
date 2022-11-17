@@ -101,21 +101,10 @@ boot:
 		move.l #timer1_interrupt, 0x118 /* タイマ割り込みベクタの登録 */
 		
 
-		
-
-        	/* Queue initialize */
-        jsr Init_Q
-
-		*LED_CLEAR:
-		move.b #' ', LED0
-		move.b #' ', LED1
-		move.b #' ', LED2
-		move.b #' ', LED3
-		move.b #' ', LED4
-		move.b #' ', LED5
-		move.b #' ', LED6
-		move.b #' ', LED7
-
+		/* task_p にタイマー割り込みで実行するルーチンのアドレスを入れておく */
+		*lea.l TT,  %a0
+		*move.l	%a0, task_p
+		*move.l #TT, task_p
 
 		/*step9のMAINへ*/
 		bra MAIN		
@@ -300,54 +289,21 @@ CALL_SET_TIMER:
 .even
 MAIN:						/*走行モードとレベルの設定(ユーザモードへ移行)*/
 
+	jsr Init_Q
 	move.w #0x0000, %SR				/*USER_MODE_LEBELを0に*/
 	lea.l USR_STK_TOP, %SP				/*USER_STACKを設定*/
 
 
-    
-	*move.l #SYSCALL_NUM_RESET_TIMER, %d0		/*システムコールでRESET_TIMERの起動*/
-	*trap #0
-
-
-	*move.l #SYSCALL_NUM_SET_TIMER,%d0		/*システムコールでSET_TIMERの起動*/
-	*move.w #50000, %d1
-	*move.l #TT, %d2
-	*trap #0
-
-	*bra LOOP
-	
-** !! *********************************
-** Typing Game routine
-** !! *********************************
-
-TYPE_GAME_INTRO:
-   	move.l #SYSCALL_NUM_PUTSTRING, %d0
-	move.l #0, %d1				/*ch=0*/
-	move.l #INTRO, %d2			/*p=#INTRO*/
-	move.l #28, %d3				/*size=8*/
+	move.l #SYSCALL_NUM_RESET_TIMER, %d0		/*システムコールでRESET_TIMERの起動*/
 	trap #0
 
-TYPE_GAME_PRINT_TXT:
-    	move.l #SYSCALL_NUM_PUTSTRING, %d0
-	move.l #0, %d1				/*ch=0*/
-	move.l #TXT_hello, %d2			/*p=#INTRO*/
-	move.l #SIZE_hello, %d3				/*size=8*/
+
+	move.l #SYSCALL_NUM_SET_TIMER,%d0		/*システムコールでSET_TIMERの起動*/
+	move.w #50000, %d1
+	move.l #TT, %d2
 	trap #0
 
-TYPE_GAME_PRINT_NEW_LINE:
-    	move.l #SYSCALL_NUM_PUTSTRING, %d0
-	move.l #0, %d1				/*ch=0*/
-	move.l #NEW_LINE, %d2			/*p=#INTRO*/
-	move.l #2, %d3				/*size=8*/
-	trap #0
-
-TYPE_GAME_SETTING:
-	move.l #0, (COUNT_SIZE)
-    	bra LOOP
-
-
-
-
+	bra LOOP
 
 ******************************************************
 ***sys_GETSTRING,SYS_PUTSTRINGのテスト
@@ -360,7 +316,6 @@ LOOP:
 	move.l #BUF, %d2			/*p=#BUF*/
 	move.l #256, %d3			/*size=256*/
 	trap #0
-
 
 	move.l %d0, %d3				/*size=d0*/
 	move.l #SYSCALL_NUM_PUTSTRING, %d0	/*PUTSTRINGの呼び出し*/
@@ -435,6 +390,14 @@ uart1_interrupt:
 timer1_interrupt:
 	move.b  #'3', LED5      /*文字’3’をLEDの6桁目に表示*/
 	movem.l %d4, -(%sp)
+	*move.w %SR, %d3
+	*move.w #0x2600, %SR
+
+	*move.l #0, %d4
+	*move.b TSTAT1, %d4
+	*andi.b #0x01, %d4	/* 0bitが1なら d4 == 1,0なら d4 == 0 */
+	*cmpi.b #0, %d4 /* 0 -> 1 */
+	*beq timer1_end
 
 /* 以下修正部分 */
 	move.w TSTAT1, %d4
@@ -480,6 +443,7 @@ INTERPUT:
 	addi.w #0x0800, %d1
 	*move.w #0x0800+'f', UTX1
 	move.w %d1, UTX1	/*step4.5:ヘッダ付与*/
+a:
 
 INTERPUT_END:
 	*move.w #0x0800+'c', UTX1
@@ -509,91 +473,8 @@ INTERGET:
 	move.l #0, %d0		/*キュー番号を設定*/
 
 	move.b %d2,%d1		/*キューに入れるデータをd1に格納*/
-
 	
-/* TYPE GAME VERSION ========================================== */    
-TYPE_GAME_CHAR_CHECK:
-    	
-	
-	lea.l COUNT_SIZE, %a1
-	move.l (%a1), %d5
- 	
-
-
-    	/* 入力が終了していないか確認*/
-	cmp.l   #SIZE_hello, %d5
-  	beq INTERGET_END
-	
-
-    	/* 参照すべき文字列を用意する*/
-
-   	lea.l TXT_hello, %a1
-	
-	adda.l %d5, %a1
-		
-	move.b (%a1), %d6
-	 
-    	  
-	/* 一致しなければ終了する*/
-   	cmp.b  %d6, %d1
-   	bne LED_BAD
-	
-    	/* 文字を出力しカウントをインクリメントする */
-	
-   	jsr INQ
-   	addi.l #1, %d5
-   	move.l %d5, (COUNT_SIZE)
-	
-	/* 入力成功表示*/
-	bra LED_GOOD
-
-
-****************
-** LED
-****************
-	
-LED_SET:
-	move.b #'0', %d6
-	move.b #'0', %d7
-
-LED_LOOP:
-	
-	addi.b #0x01, %d6
-	cmpi.b #':', %d6
-	beq LED_CARRY
-	bra LED_LOOP_END
-	
-LED_CARRY:
-	move.b #'0', %d6
-	addi.b #0x01, %d7
-
-LED_LOOP_END:
-	subq.l #1, %d5
-	beq LED_UPDATE
-	bra LED_LOOP
-
-
-LED_UPDATE:
-	move.b %d6, LED0
-	move.b %d7, LED1
-	bra INTERGET_END
-
-LED_BAD:
-	move.b #'B', LED7
-	move.b #'A', LED6
-	move.b #'D', LED5
-	move.b #' ', LED4
-	bra INTERGET_END
-	
-LED_GOOD:
-	move.b #'G', LED7
-	move.b #'O', LED6
-	move.b #'O', LED5
-	move.b #'D', LED4
-	bra LED_SET
-	
-		
-/* TYPE GAME VERSION ========================================== */   
+	jsr INQ
 
 INTERGET_END:
 	movem.l (%SP)+, %a0-%a6/%d0-%d7
@@ -890,34 +771,10 @@ TTC:
 	.dc.w 0
 	.even
 
-********************************
-** preparation to typing game
-********************************
-NEW_LINE:
-    /* size : 2 */
-    .ascii "\r\n"
-INTRO:
-    /* size : 28*/
-    .ascii "Please type this sentence!\r\n"
-TXT_hello:
-    /* size : 11*/
-    .ascii "hello world"
-
-.equ SIZE_hello, 11
-
-
-
 ******************************************************
 *** 初期化のないデータ領域
 ******************************************************
 .section .bss
-
-COUNT_SIZE:
-    .ds.l 0x01
-TXT_P:
-	.ds.l 0x01
-TXT_SIZE:
-	.ds.l 0x01
 
 task_p:
 	.ds.l	0x01

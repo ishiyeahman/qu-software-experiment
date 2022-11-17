@@ -536,7 +536,7 @@ TYPE_GAME_CHAR_CHECK:
     	  
 	/* 一致しなければ終了する*/
    	cmp.b  %d6, %d1
-   	bne LED_BAD
+   	bne FAULT
 	
     	/* 文字を出力しカウントをインクリメントする */
 	
@@ -574,9 +574,18 @@ LED_LOOP_END:
 
 
 LED_UPDATE:
+	cmpi.l #0x01, %d4
+	beq LED_UPDATE_FAULT_NUMBER
 	move.b %d6, LED0
 	move.b %d7, LED1
 	bra INTERGET_END
+
+LED_UPDATE_FAULT_NUMBER:
+	move.b %d6, LED2
+	move.b %d7, LED3
+	bra LED_BAD
+
+
 
 LED_BAD:
 	move.b #'B', LED7
@@ -591,7 +600,25 @@ LED_GOOD:
 	move.b #'O', LED5
 	move.b #'D', LED4
 	bra LED_SET
+
+****************
+** typing data
+****************
+FAULT:
+	lea.l COUNT_SIZE, %a1
+	move.l (%a1), %d5
+
+	/* %d5についてはLOOPの制御変数なので%d6へ移動 */
+	move.l %d5, %d6
+	addi.l #1, %d6
+   	move.l %d6, (COUNT_SIZE)
+
+
+	/* 失敗回数を記録する*/
+	move.l #0x01 , %d4
+	bra LED_SET
 	
+
 		
 /* TYPE GAME VERSION ========================================== */   
 
@@ -911,7 +938,8 @@ TXT_hello:
 *** 初期化のないデータ領域
 ******************************************************
 .section .bss
-
+COUNT_FAULT:
+	.ds.l 0x01
 COUNT_SIZE:
     .ds.l 0x01
 TXT_P:
