@@ -8,7 +8,7 @@
 		** レジスタ群の先頭
 		***************
 
-		\.equ REGBASE,   0xFFF000          | DMAPを使用．
+		.equ REGBASE,   0xFFF000          | DMAPを使用．
 		.equ IOBASE,    0x00d00000
 
 		***************

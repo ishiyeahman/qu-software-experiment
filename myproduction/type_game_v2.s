@@ -921,13 +921,15 @@ TTC:
 ** preparation to typing game
 ********************************
 NEW_LINE:
-    /* size : 2 */
+    ** size : 2 
     .ascii "\r\n"
 INTRO:
-    /* size : 28*/
+	** TYPE GAME イントロダクションテキスト
+    ** size : 28
     .ascii "Please type this sentence!\r\n"
 TXT_hello:
-    /* size : 11*/
+	** 出力用テキスト
+    ** size : 11
     .ascii "hello world"
 
 .equ SIZE_hello, 11
@@ -938,12 +940,20 @@ TXT_hello:
 *** 初期化のないデータ領域
 ******************************************************
 .section .bss
+
+** 入力ミスカウントメモリ
 COUNT_FAULT:
 	.ds.l 0x01
+
+** 入力正カウントメモリ
 COUNT_SIZE:
     .ds.l 0x01
+
+** 出力テキストポインタ
 TXT_P:
 	.ds.l 0x01
+
+** 出力テキストサイズポインタ
 TXT_SIZE:
 	.ds.l 0x01
 
