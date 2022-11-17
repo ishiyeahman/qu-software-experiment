@@ -1,0 +1,40 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ram              0x0000000000000000 0x0000000000040000 xrw
+rom0             0x0000000000c00000 0x0000000000080000
+device           0x0000000000fff000 0x0000000000001000
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD flex.o
+                [!provide]                        PROVIDE (__stack = 0x3fff0)
+
+.text           0x0000000000000400      0x55e
+ *(.text)
+ .text          0x0000000000000400      0x55e flex.o
+
+.data           0x0000000000000960      0x358
+                0x0000000000000960                . = ALIGN (0x4)
+ *(.data)
+ .data          0x0000000000000960      0x358 flex.o
+
+.bss            0x0000000000000cb8     0x8216
+                0x0000000000000cb8                . = ALIGN (0x4)
+ *(.bss)
+ .bss           0x0000000000000cb8     0x8216 flex.o
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+Address of section .text set to 0x400
+OUTPUT(flex.abs.tmp16182 srec)
+
+Cross Reference Table
+
+Symbol                                            File
+No symbols
